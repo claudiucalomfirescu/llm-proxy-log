@@ -97,7 +97,7 @@ The code is one rendering of the specification; [`blueprint/`](blueprint/) is th
 To regenerate the project, give a coding model the `blueprint/` folder and the **P-REBUILD**
 prompt from PROMPTS.md, then run **P-VERIFY**. The tests in `tests/` cite the requirement ids
 they prove and `demo/data/` holds recorded traffic, so you can tell whether the rebuild behaves
-like this one. The method behind it is [Prax Systems](../prax-systems/README.md).
+like this one. The method behind it is [Prax Systems](https://github.com/claudiucalomfirescu/prax-systems/blob/main/README.md).
 
 ## Tests
 ```bash
