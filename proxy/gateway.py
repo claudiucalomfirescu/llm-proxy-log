@@ -9,8 +9,9 @@ place every call passes) is where they are enforced:
                   with exponential backoff (honouring Retry-After).
   3. Fallback     only when the free DAILY cap (1,000 req/day, resets 00:00 UTC) is used up does the
                   request move to the paid fallback model (z-ai/glm-5.3-flash).
-  4. Spend cap    the fallback stops once spend reaches GATEWAY_SPEND_CAP_USD (local ledger, and the
-                  key's own usage from GET /key, whichever is higher).
+  4. Spend cap    the fallback stops once spend reaches GATEWAY_SPEND_CAP_USD: the local ledger, or the
+                  key's usage (GET /key) since this proxy started, whichever is higher. Not the key's
+                  lifetime usage: a key that has already spent more than the cap would refuse every call.
   5. Cache        every successful answer is stored by a hash of the request, so a recorded workday
                   can be replayed without spending requests.
 
@@ -128,6 +129,7 @@ class Gateway:
         self.limiters = {"free": RateLimiter(self.cfg.free_rpm), "paid": RateLimiter(self.cfg.paid_rpm)}
         self.lock = threading.Lock()
         self.key_info, self.key_read_at, self.free_since_read = None, 0.0, 0
+        self.key_usage_at_start = None   # the key's lifetime usage when this gateway first read it
         self.free_exhausted_until = 0.0
         self._db = None
 
@@ -167,6 +169,8 @@ class Gateway:
                 data = json.loads(r.read()).get("data") or {}
             with self.lock:
                 self.key_info, self.key_read_at, self.free_since_read = data, time.time(), 0
+                if self.key_usage_at_start is None:
+                    self.key_usage_at_start = data.get("usage") or 0
         except (OSError, ValueError):
             with self.lock:
                 self.key_read_at = time.time()  # keep the last good reading; try again later
@@ -185,7 +189,9 @@ class Gateway:
         return remaining is not None and remaining <= self.cfg.free_reserve
 
     def spent(self):
-        key_usage = (self.key_info or {}).get("usage") or 0
+        """Fallback spend so far: the local ledger, or the key's usage since we started (another client
+        of the same key spends from the same account), whichever is higher."""
+        key_usage = ((self.key_info or {}).get("usage") or 0) - (self.key_usage_at_start or 0)
         return max(self.spent_local(), key_usage)
 
     def status(self):

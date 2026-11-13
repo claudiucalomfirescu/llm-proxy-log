@@ -140,9 +140,13 @@ class GatewayTest(unittest.TestCase):
         status, body, meta = self.call(gw, content="c")
         self.assertEqual((status, meta["route"], body["error"]["metadata"]["gateway"]), (429, "refused", "spend_cap"))
 
-    def test_R023_key_usage_counts_toward_spend_cap(self):
+    def test_R023_key_usage_since_start_counts_toward_spend_cap(self):
+        # The key had already spent $3.20 before this proxy started: that is not this proxy's spend.
         FakeOpenRouter.key = {"usage": 3.2, "free_model_daily_requests": {"used": 1000, "limit": 1000, "remaining": 0}}
-        status, body, _ = self.call(self.gateway(spend_cap_usd=3.0))
+        gw = self.gateway(spend_cap_usd=3.0)
+        self.assertEqual(self.call(gw, content="a")[0], 200)
+        FakeOpenRouter.key["usage"] = 6.3   # another client of the same key spent $3.10 since
+        status, body, _ = self.call(gw, content="b")
         self.assertEqual((status, body["error"]["metadata"]["gateway"]), (429, "spend_cap"))
 
     def test_R024_replay_serves_from_cache(self):

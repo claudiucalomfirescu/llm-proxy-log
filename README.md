@@ -71,7 +71,8 @@ flowchart LR
 ```
 - The proxy strips the identity headers and the client key, adds the real key, forwards.
 - The **gateway** waits for a rate-limit slot, retries 429/5xx, falls back to a cheap paid model when
-  the free daily cap is used up, stops at a spend cap, and caches answers for replay.
+  the free daily cap is used up, stops at a spend cap (counting only what this proxy run spent), and
+  caches answers for replay.
 - One row per call in `calls` (schema: [SPEC.md](blueprint/SPEC.md), K-log-schema@1); secrets redacted.
 - The dashboard opens the file read-only. So can any other tool: the schema is a versioned contract.
 - Details: [ARCHITECTURE.md](blueprint/ARCHITECTURE.md). Walkthrough: [demo/DEMO.md](demo/DEMO.md).
