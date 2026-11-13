@@ -24,7 +24,7 @@ main{padding:16px 20px;display:grid;gap:16px;grid-template-columns:repeat(12,1fr
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .kpi b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
 .kpi span{color:var(--muted);font-size:12px}
-#chart{grid-column:span 7}#users{grid-column:span 5}#sessions{grid-column:span 5}#detail{grid-column:span 7}#firewall{grid-column:1/-1}
+#chart{grid-column:span 7}#users{grid-column:span 5}#sessions{grid-column:span 5}#detail{grid-column:span 7}
 @media (max-width:900px){#chart,#users,#sessions,#detail{grid-column:1/-1}}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -34,11 +34,11 @@ tr.click{cursor:pointer}tr.click:hover{background:var(--code)}tr.sel{background:
 .scroll{max-height:420px;overflow:auto}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .pill{display:inline-block;padding:0 7px;border-radius:9px;font-size:11px;font-weight:600;color:#fff}
-.lv-info{background:var(--info)}.lv-warning{background:var(--warn)}.lv-block{background:var(--bad)}.lv-error{background:var(--bad)}
+.lv-error{background:var(--bad)}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:6px}
 .msg{border-left:3px solid var(--line);padding:6px 10px;margin:8px 0;background:var(--code);border-radius:0 6px 6px 0;white-space:pre-wrap;word-break:break-word}
 .msg .who{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
-.msg.user{border-color:var(--s1)}.msg.assistant{border-color:var(--s2)}.msg.tool{border-color:var(--s3)}.msg.system{border-color:var(--muted)}.msg.blocked{border-color:var(--bad)}
+.msg.user{border-color:var(--s1)}.msg.assistant{border-color:var(--s2)}.msg.tool{border-color:var(--s3)}.msg.system{border-color:var(--muted)}.msg.error{border-color:var(--bad)}
 .turn{font-size:12px;color:var(--muted);margin-top:14px;border-top:1px dashed var(--line);padding-top:6px}
 .empty{color:var(--muted);padding:20px 0;text-align:center}
 svg text{fill:var(--muted);font-size:11px}
@@ -56,7 +56,6 @@ svg text{fill:var(--muted);font-size:11px}
   <section class="panel" id="users"><h2>Users</h2><div class="scroll"><table id="userTable"></table></div></section>
   <section class="panel" id="sessions"><h2>Sessions</h2><div class="scroll"><table id="sessionTable"></table></div></section>
   <section class="panel" id="detail"><h2 id="detailTitle">Conversation</h2><div class="scroll" id="detailBody"><p class="empty">Pick a session to read it turn by turn.</p></div></section>
-  <section class="panel" id="firewall" hidden><h2>Firewall</h2><div class="scroll"><table id="signalTable"></table></div></section>
 </main>
 <script>
 "use strict";
@@ -64,13 +63,10 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt = n => n == null ? "–" : Number(n).toLocaleString();
 const PALETTE = ["--s1","--s2","--s3","--s4","--s5","--s6"].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim());
-const LV = {info:1, warning:2, block:3};
-let calls = [], signals = null, selUser = "", selSession = null, colors = {};
+let calls = [], selUser = "", selSession = null, colors = {};
 
 async function load() {
   calls = await (await fetch("/api/calls")).json();
-  const r = await fetch("/api/signals").catch(() => null);   // only the firewall variant serves this
-  signals = r && r.ok ? await r.json() : null;
   const users = [...new Set(calls.map(c => c.user || "anonymous"))].sort();
   users.forEach((u, i) => colors[u] = PALETTE[i % PALETTE.length]);
   $("userSel").innerHTML = '<option value="">everyone</option>' + users.map(u => `<option ${u === selUser ? "selected" : ""}>${esc(u)}</option>`).join("");
@@ -82,10 +78,9 @@ function sessionsOf(rows) {
   const by = new Map();
   for (const c of rows) {
     const k = c.session || `(no session) #${c.id}`;
-    const s = by.get(k) || {session: k, user: c.user || "anonymous", agent: c.agent, start: c.ts, end: c.ts, calls: 0, tokens: 0, errors: 0, level: null};
+    const s = by.get(k) || {session: k, user: c.user || "anonymous", agent: c.agent, start: c.ts, end: c.ts, calls: 0, tokens: 0, errors: 0};
     s.calls++; s.tokens += c.total_tokens || 0; s.end = c.ts;
     if (c.status >= 400) s.errors++;
-    if (c.firewall_level && (LV[c.firewall_level] || 0) > (LV[s.level] || 0)) s.level = c.firewall_level;
     by.set(k, s);
   }
   return [...by.values()].sort((a, b) => b.start.localeCompare(a.start));
@@ -100,32 +95,29 @@ function render() {
   const cost = rows.reduce((a, c) => a + (c.cost_usd || 0), 0);
   const kpis = [["calls", fmt(rows.length)], ["sessions", fmt(sessions.length)], ["users", fmt(new Set(rows.map(c => c.user)).size)],
     ["tokens", fmt(tokens)], ["errors", fmt(errors)], ["avg latency", lat ? (lat / 1000).toFixed(1) + " s" : "–"], ["paid spend", "$" + cost.toFixed(4)]];
-  if (signals) kpis.push(["flagged calls", fmt(rows.filter(c => c.firewall_level).length)], ["blocked", fmt(rows.filter(c => c.firewall_level === "block").length)]);
   $("kpis").innerHTML = kpis.map(([k, v]) => `<div class="kpi"><b>${v}</b><span>${k}</span></div>`).join("");
   renderChart(rows);
   renderUsers();
-  $("sessionTable").innerHTML = `<tr><th>started</th><th>user</th><th>agent</th><th class="num">calls</th><th class="num">tokens</th>${signals ? "<th>firewall</th>" : ""}</tr>` +
+  $("sessionTable").innerHTML = `<tr><th>started</th><th>user</th><th>agent</th><th class="num">calls</th><th class="num">tokens</th></tr>` +
     (sessions.map(s => `<tr class="click ${s.session === selSession ? "sel" : ""}" data-s="${esc(s.session)}"><td>${esc(s.start.replace("T", " ").slice(0, 16))}</td>
       <td><span class="dot" style="background:${colors[s.user]}"></span>${esc(s.user)}</td><td>${esc(s.agent)}</td><td class="num">${s.calls}${s.errors ? ` <span class="pill lv-error">${s.errors} err</span>` : ""}</td>
-      <td class="num">${fmt(s.tokens)}</td>${signals ? `<td>${s.level ? `<span class="pill lv-${s.level}">${s.level}</span>` : ""}</td>` : ""}</tr>`).join("") || `<tr><td colspan="6" class="empty">No sessions yet.</td></tr>`);
+      <td class="num">${fmt(s.tokens)}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">No sessions yet.</td></tr>`);
   document.querySelectorAll("#sessionTable tr.click").forEach(tr => tr.onclick = () => openSession(tr.dataset.s));
-  if (signals) renderSignals();
 }
 
 function renderUsers() {
   const by = new Map();
   for (const c of calls) {
     const u = c.user || "anonymous";
-    const s = by.get(u) || {user: u, dept: c.dept, calls: 0, sessions: new Set(), tokens: 0, errors: 0, flagged: 0, last: c.ts};
+    const s = by.get(u) || {user: u, dept: c.dept, calls: 0, sessions: new Set(), tokens: 0, errors: 0, last: c.ts};
     s.calls++; s.sessions.add(c.session); s.tokens += c.total_tokens || 0; s.last = c.ts > s.last ? c.ts : s.last;
     if (c.status >= 400) s.errors++;
-    if (c.firewall_level && c.firewall_level !== "info") s.flagged++;
     by.set(u, s);
   }
   const list = [...by.values()].sort((a, b) => b.calls - a.calls);
-  $("userTable").innerHTML = `<tr><th>user</th><th>dept</th><th class="num">sessions</th><th class="num">calls</th><th class="num">tokens</th>${signals ? '<th class="num">flagged</th>' : ""}</tr>` +
+  $("userTable").innerHTML = `<tr><th>user</th><th>dept</th><th class="num">sessions</th><th class="num">calls</th><th class="num">tokens</th></tr>` +
     list.map(u => `<tr class="click ${u.user === selUser ? "sel" : ""}" data-u="${esc(u.user)}"><td><span class="dot" style="background:${colors[u.user]}"></span>${esc(u.user)}</td>
-      <td>${esc(u.dept || "")}</td><td class="num">${u.sessions.size}</td><td class="num">${fmt(u.calls)}</td><td class="num">${fmt(u.tokens)}</td>${signals ? `<td class="num">${u.flagged || ""}</td>` : ""}</tr>`).join("");
+      <td>${esc(u.dept || "")}</td><td class="num">${u.sessions.size}</td><td class="num">${fmt(u.calls)}</td><td class="num">${fmt(u.tokens)}</td></tr>`).join("");
   document.querySelectorAll("#userTable tr.click").forEach(tr => tr.onclick = () => { selUser = selUser === tr.dataset.u ? "" : tr.dataset.u; $("userSel").value = selUser; render(); });
 }
 
@@ -163,34 +155,19 @@ async function openSession(id) {
   let html = "", seen = 0;
   rows.forEach((r, i) => {
     const req = r.request || {}, msgs = Array.isArray(req.messages) ? req.messages : [];
-    html += `<div class="turn">call ${i + 1} · ${esc(r.ts)} · ${fmt(r.duration_ms)} ms · ${esc(r.model || "")}${r.route ? " · " + esc(r.route) : ""} · ${fmt(r.total_tokens)} tokens${r.firewall_level ? ` · <span class="pill lv-${r.firewall_level}">${r.firewall_level}</span>` : ""}</div>`;
+    html += `<div class="turn">call ${i + 1} · ${esc(r.ts)} · ${fmt(r.duration_ms)} ms · ${esc(r.model || "")}${r.route ? " · " + esc(r.route) : ""} · ${fmt(r.total_tokens)} tokens</div>`;
     for (const m of msgs.slice(seen)) {
       if (m.role === "assistant") continue;  // already shown as the previous call's answer
       html += `<div class="msg ${m.role}"><div class="who">${esc(m.role)}</div>${esc(text(m.content))}</div>`;
     }
     seen = msgs.length;
-    if (r.error) { html += `<div class="msg blocked"><div class="who">error ${r.status}</div>${esc(typeof r.error === "string" ? r.error : JSON.stringify(r.error))}</div>`; return; }
+    if (r.error) { html += `<div class="msg error"><div class="who">error ${r.status}</div>${esc(typeof r.error === "string" ? r.error : JSON.stringify(r.error))}</div>`; return; }
     const msg = ((r.response || {}).choices || [{}])[0].message || {};
-    const blocked = r.route === "firewall" || r.route === "firewall-response";
-    if (text(msg.content)) html += `<div class="msg ${blocked ? "blocked" : "assistant"}"><div class="who">${blocked ? "proxy (blocked, sent in the LLM's place)" : "assistant"}</div>${esc(text(msg.content))}</div>`;
+    if (text(msg.content)) html += `<div class="msg assistant"><div class="who">assistant</div>${esc(text(msg.content))}</div>`;
     for (const t of msg.tool_calls || []) html += `<div class="msg assistant"><div class="who">tool call</div>${esc(t.function.name)}(${esc(t.function.arguments)})</div>`;
     seen += 1;  // the answer becomes the next request's assistant message
   });
-  if (signals) {
-    const sig = signals.filter(s => s.session === id);
-    if (sig.length) html += `<div class="turn">firewall findings</div>` + sig.map(s => `<div class="msg blocked"><div class="who"><span class="pill lv-${s.level}">${s.level}</span> ${esc(s.topic)} · ${esc(s.detector)} · ${esc(s.rule)} · turn ${s.turn} ${esc(s.direction)}</div>${esc(s.rationale || s.matched || "")}${s.excerpt ? "\n“" + esc(s.excerpt) + "”" : ""}</div>`).join("");
-  }
   $("detailBody").innerHTML = html;
-}
-
-function renderSignals() {
-  $("firewall").hidden = false;
-  const rows = signals.filter(s => !selUser || s.user === selUser).filter(s => s.level !== "info").slice().reverse();
-  $("signalTable").innerHTML = `<tr><th>time</th><th>level</th><th>user</th><th>topic</th><th>detector</th><th>rule</th><th>session</th><th>ref</th></tr>` +
-    (rows.map(s => `<tr class="click" data-s="${esc(s.session)}"><td>${esc((s.ts || "").replace("T", " ").slice(0, 19))}</td><td><span class="pill lv-${s.level}">${s.level}</span></td>
-      <td>${esc(s.user || "")}</td><td>${esc(s.topic)}</td><td>${esc(s.detector)}</td><td>${esc(s.rule)}</td><td>${esc(s.session)}</td><td>${esc(s.ref || "")}</td></tr>`).join("")
-     || `<tr><td colspan="8" class="empty">No warnings or blocks${selUser ? " for " + esc(selUser) : ""}.</td></tr>`);
-  document.querySelectorAll("#signalTable tr.click").forEach(tr => tr.onclick = () => openSession(tr.dataset.s));
 }
 
 $("userSel").onchange = e => { selUser = e.target.value; render(); };

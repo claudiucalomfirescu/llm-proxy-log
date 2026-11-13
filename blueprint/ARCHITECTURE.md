@@ -60,7 +60,7 @@ an implementation detail, not a contract.
 | R-033, R-034 | `dashboard/static/index.html` |
 | R-040 | `demo/run.py`, `demo/fake_llm.py`, `demo/team.py` |
 | R-041 | `demo/recording.py: load` |
-| R-042 | `demo/data/demo.db` (built by `recording.py load --redate-days 7 --anchor 2026-10-30`) |
+| R-042 | `demo/data/demo.db` (built by `recording.py load --redate-days 7 --anchor 2026-11-13`) |
 | R-043 | `demo/team.py: Pacer` |
 
 ## Extension points

@@ -4,9 +4,11 @@
 ```bash
 python3 dashboard/server.py --demo        # then open http://127.0.0.1:8091
 ```
-What you should see: 125 calls, 48 sessions, 4 users over 7 days (2026-10-24 to 2026-10-30), about
-115k tokens, $0.0075 of paid spend. The recording is a real run of the demo team against
-`z-ai/glm-5.3-flash`; the sessions were spread over the week afterwards (label `redated: true`).
+What you should see: 130 calls, 48 sessions, 4 users over 7 days (2026-11-07 to 2026-11-13), about
+98k tokens, 1.7 s average latency, no errors, $0 of paid spend. The recording is three real runs of
+the demo team on 2026-11-13 (01:37 to 01:46 UTC) through the live proxy against the free model
+`nvidia/nemotron-3.5-super-vl:free`; every call has `route = primary`. The sessions were spread over
+the week afterwards, keeping their time of day (label `redated: true`), so every call shows around 01:40.
 
 ## Offline traffic (no key, fake LLM)
 ```bash
@@ -19,6 +21,7 @@ python3 proxy/view_log.py                 # the same log in the terminal
 ```bash
 export OPENROUTER_API_KEY=sk-or-...
 python3 demo/run.py --live                # free model, one call every 15 s
+python3 demo/run.py --live --pace 4       # how the shipped recording was made (about 3 minutes a run)
 python3 demo/run.py --live --pace 3 --model z-ai/glm-5.3-flash   # faster, costs well under a cent
 ```
 Or run the proxy yourself and point any client at it:
@@ -34,9 +37,10 @@ curl -s http://127.0.0.1:8080/v1/chat/completions -H 'Content-Type: application/
 2. "Calls per day, by user": one colour per person; hover a bar for the count (R-033).
 3. Click **omar** in the Users table: every panel now shows only Omar's support-bot traffic. Click
    him again to clear the filter (R-034).
-4. Click a session with 3+ calls, for example one starting "Lumen Dental wants a refund": the
-   transcript shows Omar's message, the agent's `get_ticket` call, the tool result, the next call,
-   and the answer, with latency and tokens per call (R-031, R-034).
+4. Click a session with 3+ calls, for example omar's 4-call session on 11-12 ("Lumen Dental wants a
+   refund"): the transcript shows Omar's message, the agent's `get_ticket` and `get_policy` calls, the
+   tool results, `get_order`, the answer and the follow-up reply, with latency, model, route and
+   tokens per call (R-031, R-034).
 5. In a terminal: `python3 proxy/view_log.py` lists the same sessions; `python3 proxy/view_log.py
    <session>` prints one conversation.
 6. Run `python3 demo/run.py --offline --only 4`, then press **Reload** in the dashboard (pointed at

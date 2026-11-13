@@ -130,8 +130,8 @@ sessions, users, tokens, errors, average latency, paid spend), a stacked bar cha
 user with a legend, a users table (dept, sessions, calls, tokens) that filters everything when clicked,
 a sessions list (start, user, agent, calls, tokens), and a transcript panel that rebuilds the
 conversation from the session's calls: new user/tool messages of each request, then the assistant's
-answer and tool calls, with per-call time, latency, model, route and tokens. If /api/signals exists,
-also show firewall levels and findings (llm-proxy-firewall serves it).
+answer and tool calls, with per-call time, latency, model, route and tokens. Nothing about the
+firewall: llm-proxy-firewall copies this page and adds its own panels.
 ```
 
 ### P-06 · Demo team, offline fake LLM, recorded data
@@ -154,8 +154,8 @@ the message), then answers by quoting the tool result; usage = chars/4. demo/run
 fake LLM and the proxy and runs the team; --live uses OPENROUTER_API_KEY with --pace 15 by default.
 demo/recording.py: export a log to JSON, load JSON files into a log (skip sessions already present;
 --redate-days N --anchor DAY moves whole sessions to random days, seeded, label redated=true). Record
-one real run, export it to demo/data/team-day.json and build demo/data/demo.db with
---redate-days 7 --anchor 2026-10-30.
+real runs (three passes of the 16 scenarios on the free model), export them to demo/data/team-day.json
+and build demo/data/demo.db with --redate-days 7 --anchor <the recording day>.
 ```
 
 ### P-07 · Prax documents and explainer
@@ -172,4 +172,19 @@ demo/DEMO.md (walkthrough that proves the manual R-ids) and explainers/index.htm
 animated page (no network, light/dark, reduced motion, keyboard) with scenes What, The problem, How it
 works (one real call from demo/data travelling agent -> proxy -> provider -> log -> dashboard), What you
 get, Replicate it. Add a test that no file imports anything from outside the repo.
+```
+
+### P-08 · Maintenance pass (2026-11-13)
+- **Goal:** the same behaviour with less, a correct spend cap, a demo that shows the free route, a video.
+- **Delivers:** R-023 (wording), R-042 (new fixture), D-015…D-017
+- **Done when:** all tests, `prax_check --level silver`, `dashboard/server.py --demo` shows 130 calls
+
+```text
+Spend cap: count the key's usage since the proxy first read GET /key, not its lifetime usage (keep
+gateway.py identical to llm-proxy-firewall's). Dashboard: remove everything about the firewall
+(/api/signals fetch, levels, findings panel); the firewall repo carries its own copy. Re-record the
+demo on the free model through the live proxy (demo/run.py --live --pace 4, three times), export, rebuild
+demo.db anchored on the recording day, and update every number that quotes it (README, DEMO.md,
+explainer, readme-flow.svg rows). Explainer: add a gateway scene. Video: explainers/video (Remotion),
+about a minute, every value copied from demo.db into src/real.ts, real dashboard screenshot.
 ```

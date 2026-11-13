@@ -1,3 +1,5 @@
 logs/
 __pycache__/
 *.pyc
+explainers/video/node_modules/
+explainers/video/out/

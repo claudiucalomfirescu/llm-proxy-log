@@ -120,7 +120,8 @@ Environment: `OPENROUTER_API_KEY` (required), `UPSTREAM_BASE_URL` (default
 ### Demo data
 - `demo/data/team-day.json`: list of `calls` rows (K-log-schema@1 columns, JSON columns decoded, no `id`).
 - `demo/data/demo.db`: the same rows in a K-log-schema@1 file, sessions spread over the 7 days ending
-  2026-10-30 (label `"redated": true`). This file is the fixture llm-session-console tests against.
+  2026-11-13 (label `"redated": true`). This file is the fixture llm-session-console tests against.
+  Recorded 2026-11-13: three runs of the 16 scenarios on the free model, 130 calls, 48 sessions.
 
 ### Contracts we depend on
 | Contract | Owner | What we rely on |

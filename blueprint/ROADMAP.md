@@ -12,7 +12,8 @@ Status: ✅ done · 🔜 in progress · ⏳ planned · 💤 parked
 | M6 · Demo team, offline fake LLM, recorded data, fixture for the console | R-040…R-044 | ✅ 2026-10-30 |
 | M7 · Prax Systems Silver: docs, explainer, self-containment tests | R-100…R-102 | ✅ 2026-10-30 |
 | M8 · Published as its own GitHub repo | — | ✅ 2026-11-01 |
-| M9 · Gold: P-REBUILD replayed by another model or in another language | — | ⏳ |
+| M9 · Maintenance pass: spend cap since start, firewall-free dashboard, free-model recording, video | R-023, R-042 | ✅ 2026-11-13 |
+| M10 · Gold: P-REBUILD replayed by another model or in another language | — | ⏳ |
 
 ## Next
 - Replay P-REBUILD in Go or TypeScript to reach Gold and prove the contracts are enough.

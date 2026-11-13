@@ -24,7 +24,7 @@ is repetitive, easy to forget, and puts the provider key in every agent's enviro
 llm-proxy-log sits between the agents and the provider. Agents change only their base URL and send a
 header saying who they are; the proxy holds the only real key and writes one row per call to SQLite.
 
-**Animated explainer:** [explainers/index.html](explainers/index.html) · [published](https://claude.ai/artifact/B6okrEHnusms6PxDMCbbGY)
+**See it explained:** [55-second video](explainers/proxy-log-explainer.mp4) · [animated explainer](explainers/index.html) · [published explainer](https://claude.ai/artifact/B6okrEHnusms6PxDMCbbGY)
 
 ## What it is
 Your AI agents keep calling the LLM exactly as before; you only change their base URL to this proxy.
@@ -36,6 +36,7 @@ long it took, how many tokens it used. A small dashboard shows the result. Nothi
 ```bash
 git clone <this repo> && cd llm-proxy-log
 python3 dashboard/server.py --demo        # http://127.0.0.1:8091 : a recorded week of a 4-person team
+                                          # (130 real calls on a free model, 48 sessions)
 ```
 Python 3.10+, no packages needed for the proxy and dashboard.
 
@@ -69,12 +70,14 @@ flowchart LR
   DB --> D[dashboard :8091]
   DB --> C[llm-session-console]
 ```
-- The proxy strips the identity headers and the client key, adds the real key, forwards.
+- The proxy reads the identity headers, strips them and the client key, adds the real key, forwards.
 - The **gateway** waits for a rate-limit slot, retries 429/5xx, falls back to a cheap paid model when
   the free daily cap is used up, stops at a spend cap (counting only what this proxy run spent), and
   caches answers for replay.
 - One row per call in `calls` (schema: [SPEC.md](blueprint/SPEC.md), K-log-schema@1); secrets redacted.
 - The dashboard opens the file read-only. So can any other tool: the schema is a versioned contract.
+  `python3 proxy/view_log.py` prints the same sessions in a terminal; `GET /v1/gateway/status` shows
+  free requests left, spend and limiter load.
 - Details: [ARCHITECTURE.md](blueprint/ARCHITECTURE.md). Walkthrough: [demo/DEMO.md](demo/DEMO.md).
 
 ## Siblings

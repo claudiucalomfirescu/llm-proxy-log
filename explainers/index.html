@@ -136,7 +136,7 @@ footer{color:var(--muted);font-size:13px}
           <path class="wire" id="w-ld" d="M370 240 H450"/>
           <g class="node" id="n-agent"><rect x="10" y="30" width="110" height="80" rx="10"/><text x="65" y="64" text-anchor="middle" font-weight="650">support-bot</text><text class="small" x="65" y="86" text-anchor="middle">for omar</text></g>
           <g class="node" id="n-proxy"><rect x="230" y="30" width="140" height="80" rx="10"/><text x="300" y="64" text-anchor="middle" font-weight="650">proxy</text><text class="small" x="300" y="86" text-anchor="middle" id="proxy-sub">listening :8080</text></g>
-          <g class="node" id="n-up"><rect x="450" y="30" width="100" height="80" rx="10"/><text x="500" y="64" text-anchor="middle" font-weight="650">provider</text><text class="small" x="500" y="86" text-anchor="middle">glm-5.3-flash</text></g>
+          <g class="node" id="n-up"><rect x="450" y="30" width="100" height="80" rx="10"/><text x="500" y="64" text-anchor="middle" font-weight="650">provider</text><text class="small" x="500" y="86" text-anchor="middle">free model</text></g>
           <g class="node" id="n-db"><rect x="230" y="200" width="140" height="80" rx="10"/><text x="300" y="234" text-anchor="middle" font-weight="650">proxy.db</text><text class="small" x="300" y="256" text-anchor="middle">table calls</text></g>
           <g class="node" id="n-dash"><rect x="450" y="200" width="100" height="80" rx="10"/><text x="500" y="234" text-anchor="middle" font-weight="650">dashboard</text><text class="small" x="500" y="256" text-anchor="middle">read-only</text></g>
           <circle class="packet" id="packet" r="9" cx="0" cy="0" style="transform:translate(65px,70px)"/>
@@ -154,32 +154,46 @@ footer{color:var(--muted);font-size:13px}
   </section>
 
   <!-- 4 -->
+  <section class="scene" data-scene="The gateway" hidden>
+    <h2>Budget rules in the one place every call passes</h2>
+    <p>All agents share one provider account, so its limits are shared too. The gateway inside the proxy applies them to every chat completion; set <code>PROXY_GATEWAY=off</code> for a plain pass-through.</p>
+    <div class="grid2">
+      <div class="card"><h4>Rate limit</h4><p>At most 16 free-model calls in any 60 seconds (the provider allows 20). A call over the limit waits for a slot instead of failing.</p></div>
+      <div class="card"><h4>Backoff</h4><p>A per-minute 429 or a busy provider (502, 503) is retried on the same free model, with growing delays that honour <code>Retry-After</code>.</p></div>
+      <div class="card"><h4>Fallback</h4><p>Only when the free daily cap is used up, or the free model hangs past 90 s, does the call move to a cheap paid model. The row records <code>route = fallback</code>.</p></div>
+      <div class="card"><h4>Spend cap</h4><p>Paid calls stop at <code>GATEWAY_SPEND_CAP_USD</code> ($3). It counts what this proxy run spent, or the key's usage since the proxy started, never the key's lifetime total.</p></div>
+      <div class="card"><h4>Cache</h4><p>Every answer is stored by a hash of the request, so a recorded day can be replayed without spending a request.</p></div>
+      <div class="card"><h4>In the recorded week</h4><p>130 calls, every one <code>route = primary</code> on the free model, no retries, no errors, $0 of paid spend. <code>GET /v1/gateway/status</code> shows the live numbers.</p></div>
+    </div>
+  </section>
+
+  <!-- 5 -->
   <section class="scene" data-scene="What you get" hidden>
     <h2>A week of a four-person team, from one file</h2>
     <p>The recorded demo week in <code>demo/data/demo.db</code>, as the dashboard shows it. Every number below comes from that file.</p>
     <div class="kpis">
-      <div class="kpi"><b>125</b><span>calls</span></div><div class="kpi"><b>48</b><span>sessions</span></div>
-      <div class="kpi"><b>4</b><span>users</span></div><div class="kpi"><b>114,875</b><span>tokens</span></div>
-      <div class="kpi"><b>$0.0075</b><span>paid spend</span></div><div class="kpi"><b>0</b><span>errors</span></div>
+      <div class="kpi"><b>130</b><span>calls</span></div><div class="kpi"><b>48</b><span>sessions</span></div>
+      <div class="kpi"><b>4</b><span>users</span></div><div class="kpi"><b>97,873</b><span>tokens</span></div>
+      <div class="kpi"><b>$0</b><span>paid spend</span></div><div class="kpi"><b>0</b><span>errors</span></div>
     </div>
     <div class="cols">
-      <div class="stage"><svg viewBox="0 0 520 240" id="chart" role="img" aria-label="Calls per day by user, 24 to 30 October"></svg>
+      <div class="stage"><svg viewBox="0 0 520 240" id="chart" role="img" aria-label="Calls per day by user, 7 to 13 November"></svg>
         <div class="legend" id="legend" style="padding:6px 8px 2px"></div></div>
       <div class="card"><h4>The T-322 session, rebuilt from 4 rows</h4>
         <div class="chat">
           <div class="bubble u"><b>omar</b> · Lumen Dental wants a refund in T-322. Are they eligible, and who has to approve it?</div>
           <div class="bubble t">get_ticket("T-322") · get_policy("refunds")</div>
           <div class="bubble t">get_order("1057") → Business, 25 seats, $1,500</div>
-          <div class="bubble a">Policy: full refund within 30 days of the first payment; after that, pro-rated credit only. … The refund amount ($1,500) is over the $500 threshold, so it needs your approval as support lead.</div>
+          <div class="bubble a">Eligibility: they can get a full refund only within 30 days of their first payment; otherwise it's pro-rated credit only. … Approval: the refund is $1,500, which is above $500, so Omar (support lead) must approve it.</div>
           <div class="bubble u"><b>omar</b> · Draft a short, kind reply to them explaining the next step.</div>
-          <div class="bubble a">Subject: Re: Your refund request (T-322). Hi Lumen Dental team, thank you for reaching out…</div>
+          <div class="bubble a">Hi Lumen Dental team, thanks for reaching out, and I'm sorry to hear the email import hasn't been working for you…</div>
         </div>
-        <p>4 calls · 2,767 tokens · 11.0 s of model time · $0.00023</p>
+        <p>4 calls · 3,869 tokens · 7.9 s of model time · $0 (free model)</p>
       </div>
     </div>
   </section>
 
-  <!-- 5 -->
+  <!-- 6 -->
   <section class="scene" data-scene="Replicate it" hidden>
     <h2>Run it, then make it yours</h2>
     <div class="grid2">
@@ -199,7 +213,7 @@ headers  = {"X-Agent-User": "you",
     </div>
   </section>
 
-  <footer>Built with Prax Systems: GOAL, SPEC, PROMPTS and tests ship with the code so the system can be rebuilt. Keys: Space play/pause, ← → step, 1–5 scenes.</footer>
+  <footer>Built with Prax Systems: GOAL, SPEC, PROMPTS and tests ship with the code so the system can be rebuilt. Keys: Space play/pause, ← → step, 1–6 scenes. Video: <a href="proxy-log-explainer.mp4">proxy-log-explainer.mp4</a> (about a minute).</footer>
 </div>
 
 <script>
@@ -211,13 +225,13 @@ function show(i){current=i;scenes.forEach((s,j)=>s.hidden=j!==i);[...tabs.childr
 
 /* scene 3: one real call (demo/data/demo.db, calls row 4) */
 const P={agent:[65,70],proxy:[300,70],up:[500,70],db:[300,240],dash:[500,240]};
-const FIELDS=[["ts","2026-10-29T21:20:09Z"],["user","omar"],["dept","support"],["agent","support-bot"],["session","a17d33a57ab7"],["key_id","b5a2c962"],["model","z-ai/glm-5.3-flash"],["route","direct"],["status","200"],["finish_reason","tool_calls"],["duration_ms","1675"],["prompt_tokens","389"],["completion_tokens","27"],["total_tokens","416"],["cost_usd","0.0000264"],["labels",'{"org":"brightleaf","task":"s02"}']];
+const FIELDS=[["ts","2026-11-12T01:37:49Z"],["user","omar"],["dept","support"],["agent","support-bot"],["session","f537fab50c6e"],["key_id","b5a2c962"],["model","nvidia/nemotron-3.5-super-vl:free"],["route","primary"],["status","200"],["finish_reason","tool_calls"],["duration_ms","1130"],["prompt_tokens","539"],["completion_tokens","106"],["total_tokens","645"],["cost_usd","NULL (free model)"],["labels",'{"org":"brightleaf","task":"s02"}']];
 const STEPS=[
  {at:"agent",n:["agent"],w:[],t:"Omar asks his support bot",b:"The bot builds a chat completion with its tools (get_ticket, get_order, get_policy) and posts it to the proxy with a dummy key.",f:[]},
- {at:"proxy",n:["proxy"],w:["w-ap"],t:"Headers say who is calling",b:"X-Agent-User: omar · X-Agent-Dept: support · X-Agent-Id: support-bot · X-Session-Id: a17d33a57ab7. The proxy reads them, then removes them.",f:["user","dept","agent","session","key_id","labels"],sub:"identity()"},
+ {at:"proxy",n:["proxy"],w:["w-ap"],t:"Headers say who is calling",b:"X-Agent-User: omar · X-Agent-Dept: support · X-Agent-Id: support-bot · X-Session-Id: f537fab50c6e. The proxy reads them, then removes them.",f:["user","dept","agent","session","key_id","labels"],sub:"identity()"},
  {at:"proxy",n:["proxy"],w:["w-ap"],t:"The key is swapped",b:"The dummy key is dropped (only an 8-character hash of it is kept). The real key, which only this process holds, goes on the request.",f:["model"],sub:"real key in",key:true},
- {at:"up",n:["proxy","up"],w:["w-pu"],t:"The gateway forwards it",b:"It waits for a rate-limit slot if needed, sends the request, and would retry a 429 or fall back to a cheaper model at the daily cap. Here: route direct, first try.",f:["route"],sub:"gateway",key:true},
- {at:"proxy",n:["up","proxy"],w:["w-pu"],t:"The model answers with two tool calls",b:"get_ticket(\"T-322\") and get_policy(\"refunds\"), after 1.7 s, using 416 tokens.",f:["status","finish_reason","duration_ms","prompt_tokens","completion_tokens","total_tokens","cost_usd"],sub:"answer back"},
+ {at:"up",n:["proxy","up"],w:["w-pu"],t:"The gateway forwards it",b:"It waits for a rate-limit slot if needed (16 free calls a minute), sends the request, and would retry a 429 or fall back to a cheap paid model at the free daily cap. Here: route primary, the free model, first try.",f:["route"],sub:"gateway",key:true},
+ {at:"proxy",n:["up","proxy"],w:["w-pu"],t:"The model answers with two tool calls",b:"get_ticket(\"T-322\") and get_policy(\"refunds\"), after 1.1 s, using 645 tokens. Free model, so no cost.",f:["status","finish_reason","duration_ms","prompt_tokens","completion_tokens","total_tokens","cost_usd"],sub:"answer back"},
  {at:"db",n:["proxy","db"],w:["w-pl"],t:"One row goes into calls",b:"Request and response bodies are stored too, with any key or bearer token replaced by [REDACTED]. If the write failed, the reply would still go out.",f:["ts"],sub:"log_call()"},
  {at:"agent",n:["agent","proxy"],w:["w-ap"],t:"The agent gets the answer unchanged",b:"It runs the two tools and calls again with the results. Same session, so the next three calls line up behind this one.",f:[]},
  {at:"dash",n:["db","dash"],w:["w-ld"],t:"Anyone can read the file",b:"The dashboard opens proxy.db read-only. So can llm-session-console, or your own script: the columns are a versioned contract, K-log-schema@1.",f:[]},
@@ -248,13 +262,13 @@ document.addEventListener("keydown",e=>{if(e.target.closest("input,textarea"))re
   if(e.key===" "&&current===2){e.preventDefault();play()}
   else if(e.key==="ArrowRight"){current===2?(stop(),go(1)):show(Math.min(current+1,scenes.length-1))}
   else if(e.key==="ArrowLeft"){current===2?(stop(),go(-1)):show(Math.max(current-1,0))}
-  else if(/^[1-5]$/.test(e.key))show(+e.key-1)});
+  else if(/^[1-6]$/.test(e.key))show(+e.key-1)});
 render();
 
 /* scene 4: calls per day by user, from demo/data/demo.db */
-const DAYS=["10-24","10-25","10-26","10-27","10-28","10-29","10-30"],USERS=["omar","maya","lena","raj"];
-const C={omar:[0,3,11,13,3,6,7],maya:[4,0,7,2,0,3,14],lena:[2,0,5,2,6,3,4],raj:[0,6,8,0,2,6,8]};
-(function(){const W=520,H=240,L=34,B=26,T=10,max=35,st=(W-L-6)/DAYS.length,bw=st*.62;
+const DAYS=["11-07","11-08","11-09","11-10","11-11","11-12","11-13"],USERS=["omar","maya","lena","raj"];
+const C={omar:[0,2,11,13,3,6,7],maya:[4,0,9,2,0,4,17],lena:[2,0,5,2,6,3,4],raj:[0,6,8,0,2,6,8]};
+(function(){const W=520,H=240,L=34,B=26,T=10,max=40,st=(W-L-6)/DAYS.length,bw=st*.62;
   const col=u=>getComputedStyle(document.documentElement).getPropertyValue("--u-"+u).trim();
   let s="";for(let v=0;v<=max;v+=5){const y=H-B-(H-B-T)*v/max;s+=`<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text class="small" x="${L-6}" y="${y+4}" text-anchor="end">${v}</text>`}
   DAYS.forEach((d,i)=>{let y=H-B;const x=L+i*st+(st-bw)/2;let tot=0;

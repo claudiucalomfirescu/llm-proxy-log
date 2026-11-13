@@ -31,8 +31,9 @@ docs:
 explainer:
   file: explainers/index.html
   published: "https://claude.ai/artifact/B6okrEHnusms6PxDMCbbGY"
+  video: explainers/proxy-log-explainer.mp4
 built_with:
   model: "Claude (Anthropic), Claude Code cloud session"
   date: "2026-10-30"
   language: python
-  demo_data_model: "z-ai/glm-5.3-flash via OpenRouter"
+  demo_data_model: "nvidia/nemotron-3.5-super-vl:free via OpenRouter (recorded 2026-11-13)"
